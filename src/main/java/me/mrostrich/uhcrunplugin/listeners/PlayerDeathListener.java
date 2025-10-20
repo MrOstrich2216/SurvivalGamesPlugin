@@ -3,6 +3,7 @@ package me.mrostrich.uhcrunplugin.listeners;
 import me.mrostrich.uhcrunplugin.GameManager;
 import me.mrostrich.uhcrunplugin.UhcRunPlugin;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -80,7 +81,7 @@ public class PlayerDeathListener implements Listener {
         }
 
         Bukkit.broadcastMessage(msg);
-
+        victim.getWorld().playSound(victim.getLocation(), org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
         // Track stats
         if (killer != null) {
             plugin.getGameManager().recordKill(killer);

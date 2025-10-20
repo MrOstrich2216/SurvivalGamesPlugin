@@ -162,7 +162,7 @@ public class GameManager {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendTitle("§aThe games have begun!", "", 10, 40, 10);
             p.sendActionBar("§eGrace period: " + (graceSeconds / 60) + " minutes. §cYou have only one life.");
-            p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
+            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 1.0f, 1.0f);
         }
 
         // Grace countdown task
@@ -193,7 +193,7 @@ public class GameManager {
 
     private void onGraceEnd() {
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
+            p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
         }
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "Grace period ended! PvP is now enabled.");
         startBorderShrink(shrinkRateFight);
@@ -309,21 +309,23 @@ public class GameManager {
         Team redTeam = board.getTeam("finalFight");
         if (redTeam != null) redTeam.unregister();
 
-        // Play fireworks 3 times
+        // Play fireworks + level-up sound 5 times
         new BukkitRunnable() {
             int count = 0;
             @Override
             public void run() {
-                if (count++ >= 3) {
+                if (count++ >= 5) {
                     cancel();
                     return;
                 }
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     p.playSound(p.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0f, 1.0f);
+                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 20L); // 3 times, once per second
+        }.runTaskTimer(plugin, 0L, 20L); // 5 times, once per second
     }
+
     public void forceStop() {
         if (graceTask != null) graceTask.cancel();
         if (borderTask != null) borderTask.cancel();
