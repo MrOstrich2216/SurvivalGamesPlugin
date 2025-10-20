@@ -1,0 +1,14 @@
+name: UhcRunPlugin
+main: me.mrostrich.uhcrunplugin.UhcRunPlugin
+version: FINAL-RELEASE
+api-version: '1.21'
+author: MrOstrich2216
+description: Minimalist UHC Run controller designed for Terraform Generator workflows
+commands:
+  uhc:
+    description: UHC administration command
+    usage: /uhc <enable|disable|start|status|forcestop|neutral>
+    permission: uhc.admin
+permissions:
+  uhc.admin:
+    default: op
