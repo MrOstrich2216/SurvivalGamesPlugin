@@ -29,7 +29,7 @@ So it is kinda a UHC RUN plugin. It's just this has natural regeneration so no g
 ## 📦 Installation
 
 1. Clone or download this repo
-2. Build the plugin using IntelliJ + Gradle or Maven
+2. Build the plugin using IntelliJ + Gradle or Maven (WARNING THE ENTIRE SOURCE CODE IS MADE IN UTF-8 ENCODING)
 3. Place the compiled `.jar` into your server’s `/plugins` folder
 4. Restart the server
 
