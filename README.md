@@ -12,11 +12,11 @@ Hi, this is MrOstrich — glad you're here! This is a Minecraft plugin I built f
 - **Exempt User Support**: Admins like `"Recorder"` are excluded from stats and match logic
 - **Custom Death Messages**: Weapon-based, ranged kills with distance, bare hands fallback
 - **Sound Effects**:
-  - Start: `EVENT_RAID_HORN`
-  - Grace End: `BEACON_ACTIVATE` or `DRAGON_GROWL`
-  - Final Fight: `WITHER_SPAWN`
-  - Death: `LIGHTNING_THUNDER`
-  - Victory: `FIREWORK_LAUNCH` + `LEVELUP` (looped 5x)
+  - Start: `UI_TOAST_CHALLENGE_COMPLETE`
+  - Grace End: `BLOCK_BEACON_ACTIVATE`
+  - Final Fight: `ENTITY_WITHER_SPAWN`
+  - Death: `ENTITY_LIGHTNING_BOLT_THUNDER`
+  - Victory: `ENTITY_FIREWORK_ROCKET_LAUNCH` + `ENTITY_PLAYER_LEVELUP` (looped 5x)
 - **Scoreboard & UI**:
   - Dynamic team tracking
   - Glowing red outline during final fight
