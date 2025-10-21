@@ -153,7 +153,6 @@ public class GameManager {
             }
         }
 
-
         // Start grace
         this.state = State.GRACE;
         this.graceRemaining = graceSeconds;
@@ -162,7 +161,7 @@ public class GameManager {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendTitle("§aThe games have begun!", "", 10, 40, 10);
             p.sendActionBar("§eGrace period: " + (graceSeconds / 60) + " minutes. §cYou have only one life.");
-            p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 1.0f, 1.0f);
+            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
 
         // Grace countdown task
