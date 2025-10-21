@@ -1,6 +1,6 @@
-package me.mrostrich.uhcrunplugin.util;
+package me.mrostrich.survivalgames.util;
 
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -32,9 +32,10 @@ public final class TeleportUtil {
      * @return A safe location, or the center if none found.
      */
     public static Location randomSafeLocation(World world, Location center, double radius) {
-        for (int i = 0; i < 50; i++) {
+        int attempts = 100;
+        for (int i = 0; i < attempts; i++) {
             double angle = RNG.nextDouble() * Math.PI * 2.0;
-            double r = RNG.nextDouble() * radius;
+            double r = Math.sqrt(RNG.nextDouble()) * radius; // Uniform area sampling
             int x = center.getBlockX() + (int) Math.round(Math.cos(angle) * r);
             int z = center.getBlockZ() + (int) Math.round(Math.sin(angle) * r);
 
@@ -44,7 +45,6 @@ public final class TeleportUtil {
             Block feet = world.getBlockAt(x, y, z);
             Block below = feet.getRelative(BlockFace.DOWN);
 
-            // Must have solid ground and no liquid at feet
             if (!below.getType().isSolid()) continue;
             if (feet.isLiquid()) continue;
 
@@ -52,9 +52,16 @@ public final class TeleportUtil {
             loc.setYaw(RNG.nextFloat() * 360f);
             return loc;
         }
-        // Fallback: spawn location
-        return center.clone().add(0.5, 1.0, 0.5);
+
+        // Fallback: random direction from center
+        double fallbackAngle = RNG.nextDouble() * Math.PI * 2.0;
+        double fallbackRadius = radius * 0.75;
+        int fx = center.getBlockX() + (int) Math.round(Math.cos(fallbackAngle) * fallbackRadius);
+        int fz = center.getBlockZ() + (int) Math.round(Math.sin(fallbackAngle) * fallbackRadius);
+        int fy = world.getHighestBlockYAt(fx, fz);
+        return new Location(world, fx + 0.5, fy, fz + 0.5);
     }
+
 
     /**
      * Gives the Recorder player an unbreakable compass that teleports them to random alive players.
@@ -62,7 +69,7 @@ public final class TeleportUtil {
      * @param player The Recorder player.
      * @param plugin The plugin instance.
      */
-    public static void giveRecorderCompass(Player player, UhcRunPlugin plugin) {
+    public static void giveRecorderCompass(Player player, SurvivalGamesPlugin plugin) {
         ItemStack compass = new ItemStack(Material.COMPASS, 1);
         ItemMeta meta = compass.getItemMeta();
         if (meta != null) {

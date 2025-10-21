@@ -1,7 +1,7 @@
-package me.mrostrich.uhcrunplugin.ui;
+package me.mrostrich.survivalgames.ui;
 
-import me.mrostrich.uhcrunplugin.GameManager;
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.GameManager;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public class ScoreboardTask {
 
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
     private BukkitRunnable task;
 
     private static final String[] ENTRY_KEYS = new String[]{
@@ -25,7 +25,7 @@ public class ScoreboardTask {
             "§a","§b","§c","§d","§e","§f"
     };
 
-    public ScoreboardTask(UhcRunPlugin plugin) {
+    public ScoreboardTask(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -43,82 +43,63 @@ public class ScoreboardTask {
                     if (mgr == null) continue;
                     Scoreboard board = mgr.getNewScoreboard();
 
-                    Objective obj = board.getObjective("uhc");
+                    Objective obj = board.getObjective("survival");
                     if (obj == null) {
-                        obj = board.registerNewObjective("uhc", "dummy", Component.text("§b§lUHC RUN")); // Cyan + Bold
+                        obj = board.registerNewObjective("survival", Criteria.DUMMY, Component.text("§b§lSurvival Games"));
                     }
                     obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
                     int line = 15;
-
-                    setLine(board, obj, line--, "§b§lUltra Hardcore Run");
-                    setLine(board, obj, line--, "§eGaming Competition");
-                    setLine(board, obj, line--, "§7-by MrOstrich2216");
+                    setLine(board, obj, line--, "§e   Survival Games");
+                    setLine(board, obj, line--, "§7A game by §fMrOstrich2216");
                     setLine(board, obj, line--, "§7--------------------");
 
-                    setLine(board, obj, line--, "§ePlayer: §f" + p.getName()); // White
+                    setLine(board, obj, line--, "§ePlayer: §f" + p.getName());
 
                     String aliveColor = switch (gm.getState()) {
-                        case GRACE -> "§a";       // Green
-                        case FIGHT -> "§6";       // Orange
-                        case FINAL_FIGHT -> "§c"; // Red
+                        case GRACE -> "§a";
+                        case FIGHT -> "§6";
+                        case FINAL_FIGHT -> "§4§l";
                         default -> "§f";
                     };
                     setLine(board, obj, line--, aliveColor + "Players Left: §f" + gm.getAliveCount());
 
-                    setLine(board, obj, line--, "§eTop Kills:");
+                    setLine(board, obj, line--, "§eTop Killer:");
 
-                    List<Map.Entry<UUID, Integer>> top = gm.topKills(3).stream()
-                            .filter(entry -> {
-                                OfflinePlayer op = Bukkit.getOfflinePlayer(entry.getKey());
-                                return !"Recorder".equalsIgnoreCase(op.getName());
-                            })
-                            .collect(Collectors.toList());
+                    Map.Entry<UUID, Integer> topKiller = gm.topKills(1).stream()
+                            .filter(entry -> !plugin.isExempt(entry.getKey()))
+                            .findFirst()
+                            .orElse(null);
 
-                    for (int i = 0; i < 3; i++) {
-                        String content;
-                        if (i < top.size()) {
-                            UUID id = top.get(i).getKey();
-                            int k = top.get(i).getValue();
-                            OfflinePlayer op = Bukkit.getOfflinePlayer(id);
-                            String name = (op.getName() != null) ? op.getName() : "Unknown";
-                            String rankColor = switch (i) {
-                                case 0 -> "§b"; // Cyan
-                                case 1 -> "§e"; // Yellow
-                                case 2 -> "§7"; // Gray
-                                default -> "§f";
-                            };
-                            content = rankColor + (i + 1) + ". " + name + " - " + k;
-                        } else {
-                            content = "§7---";
-                        }
-                        setLine(board, obj, line--, content);
+                    String killerName = "Unknown";
+                    int killCount = 0;
+
+                    if (topKiller != null) {
+                        OfflinePlayer op = Bukkit.getOfflinePlayer(topKiller.getKey());
+                        if (op.getName() != null) killerName = op.getName();
+                        killCount = topKiller.getValue();
                     }
 
+                    setLine(board, obj, line--, "§c" + killerName + " §6- " + killCount);
+
                     if (gm.getState() == GameManager.State.ENDED) {
-                        setLine(board, obj, line--, "§ePlacements:");
+                        setLine(board, obj, line--, "§eFinal Standings:");
 
                         List<UUID> aliveList = gm.getAlive().stream()
-                                .filter(id -> {
-                                    OfflinePlayer op = Bukkit.getOfflinePlayer(id);
-                                    return !"Recorder".equalsIgnoreCase(op.getName());
-                                })
+                                .filter(id -> !plugin.isExempt(id))
                                 .collect(Collectors.toList());
 
                         List<UUID> deaths = gm.getDeathOrder().stream()
-                                .filter(id -> {
-                                    OfflinePlayer op = Bukkit.getOfflinePlayer(id);
-                                    return !"Recorder".equalsIgnoreCase(op.getName());
-                                })
+                                .filter(id -> !plugin.isExempt(id))
                                 .collect(Collectors.toList());
 
                         String first = aliveList.isEmpty() ? "Unknown" : Bukkit.getOfflinePlayer(aliveList.get(0)).getName();
                         String second = deaths.size() >= 1 ? Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 1)).getName() : "Unknown";
                         String third = deaths.size() >= 2 ? Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 2)).getName() : "Unknown";
 
-                        setLine(board, obj, line--, "§61st: " + first);   // Gold
-                        setLine(board, obj, line--, "§72nd: " + second);  // Silver
-                        setLine(board, obj, line--, "§43rd: " + third);   // Bronze
+                        setLine(board, obj, line--, "§61st: " + first);
+                        setLine(board, obj, line--, "§72nd: " + second);
+                        setLine(board, obj, line--, "§43rd: " + third);
                     }
 
                     setLine(board, obj, line--, "§7--------------------");

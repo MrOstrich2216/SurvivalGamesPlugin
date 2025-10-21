@@ -1,9 +1,7 @@
-package me.mrostrich.uhcrunplugin.listeners;
+package me.mrostrich.survivalgames.listeners;
 
-import me.mrostrich.uhcrunplugin.GameManager;
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.Bukkit;
-import org.bukkit.Sound;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -16,9 +14,9 @@ import org.bukkit.inventory.ItemStack;
 
 public class PlayerDeathListener implements Listener {
 
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
 
-    public PlayerDeathListener(UhcRunPlugin plugin) {
+    public PlayerDeathListener(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
     }
 

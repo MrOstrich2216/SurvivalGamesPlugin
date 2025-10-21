@@ -1,18 +1,14 @@
-package me.mrostrich.uhcrunplugin;
+package me.mrostrich.survivalgames;
 
-import me.mrostrich.uhcrunplugin.util.BorderUtil;
-import me.mrostrich.uhcrunplugin.util.TeleportUtil;
+import me.mrostrich.survivalgames.util.BorderUtil;
+import me.mrostrich.survivalgames.util.TeleportUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
-import org.bukkit.GameRule;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.ScoreboardManager;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -28,7 +24,7 @@ public class GameManager {
 
     public enum State { WAITING, GRACE, FIGHT, FINAL_FIGHT, ENDED }
 
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
     private State state = State.WAITING;
 
     // Config
@@ -42,6 +38,7 @@ public class GameManager {
     private final Set<String> exemptUsers;
 
     // Runtime
+    private final Set<UUID> teleportedOnJoin = new HashSet<>();
     private final Map<UUID, Location> spawnLocations = new HashMap<>();
     private final Set<UUID> alive = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Integer> kills = new HashMap<>();
@@ -54,7 +51,7 @@ public class GameManager {
         this.state = newState;
     }
 
-    public GameManager(UhcRunPlugin plugin) {
+    public GameManager(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
         this.graceSeconds = plugin.getConfig().getInt("grace-seconds", 600);
         this.initialBorderDiameter = plugin.getConfig().getDouble("initial-border-diameter", 1500.0);
@@ -73,7 +70,7 @@ public class GameManager {
     public int getAliveCount() {
         return (int) alive.stream()
                 .map(Bukkit::getOfflinePlayer)
-                .filter(op -> !"Recorder".equalsIgnoreCase(op.getName()))
+                .filter(op -> !exemptUsers.contains(op.getName()))
                 .count();
     }
     public double getCurrentBorderDiameter() { return currentBorderDiameter; }
@@ -88,8 +85,14 @@ public class GameManager {
     }
 
     public void onJoin(Player p) {
-        if (plugin.isPluginEnabledFlag() && state == State.WAITING && !isExempt(p)) {
-            p.setGameMode(GameMode.ADVENTURE);
+        if (!plugin.isPluginEnabledFlag() || state != State.WAITING || isExempt(p)) return;
+
+        p.setGameMode(GameMode.ADVENTURE);
+
+        if (!teleportedOnJoin.contains(p.getUniqueId())) {
+            Location spawn = Bukkit.getWorld("world").getSpawnLocation();
+            p.teleport(spawn);
+            teleportedOnJoin.add(p.getUniqueId());
         }
     }
 
@@ -117,10 +120,11 @@ public class GameManager {
         kills.clear();
         deathOrder.clear();
 
-        List<String> excluded = plugin.getConfig().getStringList("excluded-users");
+        List<String> exempt = plugin.getConfig().getStringList("exempt-users");
+
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (!excluded.contains(p.getName())) {
+            if (!exempt.contains(p.getName())) {
                 alive.add(p.getUniqueId());
                 kills.put(p.getUniqueId(), 0);
 
@@ -132,8 +136,7 @@ public class GameManager {
                 p.setHealthScale(20.0);
                 p.setHealth(20.0);
             } else {
-                // Recorder setup: Creative + Invisibility + fixed spawn
-                p.teleport(spawn); // ← this ensures fixed spawn
+                // Recorder setup: Creative + Invisibility
                 Bukkit.getLogger().info("Recorder teleported to spawn: " + spawn); //Just for Debug
                 p.setGameMode(GameMode.CREATIVE);
                 p.setHealthScale(20.0);
@@ -159,7 +162,7 @@ public class GameManager {
 
         // UI: Title + ActionBar + Sound
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendTitle("§aThe games have begun!", "", 10, 40, 10);
+            p.sendTitle("§aLet the games begin!", "", 10, 40, 10);
             p.sendActionBar("§eGrace period: " + (graceSeconds / 60) + " minutes. §cYou have only one life.");
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
@@ -179,16 +182,14 @@ public class GameManager {
         graceTask.runTaskTimer(plugin, 20L, 20L);
 
         // Legacy chat messages (preserved)
-        Bukkit.broadcastMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "UHC has started! "
+        Bukkit.broadcastMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "The game has begun! "
                 + ChatColor.GRAY + "Grace period: " + (graceSeconds / 60) + " minutes. PvP disabled.");
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "You have only one life. "
                 + ChatColor.DARK_GRAY + "No second chances. No respawns. Just glory or defeat.");
         Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Let the game begin!! "
                 + ChatColor.YELLOW + "May the smartest survive.");
+        teleportedOnJoin.clear();
     }
-
-
-
 
     private void onGraceEnd() {
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -209,12 +210,23 @@ public class GameManager {
                     this.cancel();
                     return;
                 }
+
                 currentBorderDiameter = Math.max(minBorderDiameter, currentBorderDiameter - ratePerSecond);
-                World w = Bukkit.getWorld("world");
-                if (w == null) w = Bukkit.getWorlds().get(0);
-                if (w != null) {
-                    w.getWorldBorder().setSize(currentBorderDiameter);
+
+                World world = Bukkit.getWorld("world");
+                if (world == null) world = Bukkit.getWorlds().get(0);
+                if (world != null) {
+                    world.getWorldBorder().setSize(currentBorderDiameter);
+                    world.getWorldBorder().setCenter(world.getSpawnLocation()); // ensure center is locked
+                    world.getWorldBorder().setWarningDistance(10); // red screen warning
                 }
+
+                // Live tracker: show border size to all players
+                String msg = ChatColor.AQUA + "Border: " + ChatColor.YELLOW + String.format("%.1f", currentBorderDiameter) + " blocks";
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendActionBar(msg);
+                }
+
                 if (currentBorderDiameter <= minBorderDiameter + 0.001) {
                     this.cancel();
                 }
@@ -223,13 +235,14 @@ public class GameManager {
         borderTask.runTaskTimer(plugin, 20L, 20L); // tick every second
     }
 
+
     public void checkFinalFightAcceleration() {
-        List<String> excluded = plugin.getConfig().getStringList("excluded-users");
+        List<String> exempt = plugin.getConfig().getStringList("exempt-users");
+
         if ((state == State.FIGHT || state == State.GRACE)) {
             Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
             Team aliveTeam = board.getTeam("alive");
             int aliveCount = aliveTeam != null ? aliveTeam.getSize() : getAliveCount();
-
             if (aliveCount <= finalFightThreshold) {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
@@ -247,7 +260,7 @@ public class GameManager {
                 }
 
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (!excluded.contains(p.getName())) {
+                    if (!exempt.contains(p.getName())) {
                         p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 1, false, false));
                         redTeam.addEntry(p.getName());
                     }
@@ -358,10 +371,9 @@ public class GameManager {
         }
         spawnLocations.clear();
 
-        // Reset excluded users
-        List<String> excluded = plugin.getConfig().getStringList("excluded-users");
+        // Reset exempt users
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (excluded.contains(p.getName())) {
+            if (isExempt(p)) {
                 p.setGameMode(GameMode.SURVIVAL);
                 p.removePotionEffect(PotionEffectType.INVISIBILITY);
                 for (Player other : Bukkit.getOnlinePlayers()) {

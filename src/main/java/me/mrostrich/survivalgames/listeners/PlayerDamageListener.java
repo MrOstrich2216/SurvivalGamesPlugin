@@ -1,7 +1,7 @@
-package me.mrostrich.uhcrunplugin.listeners;
+package me.mrostrich.survivalgames.listeners;
 
-import me.mrostrich.uhcrunplugin.GameManager;
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.GameManager;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -11,9 +11,9 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 public class PlayerDamageListener implements Listener {
 
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
 
-    public PlayerDamageListener(UhcRunPlugin plugin) {
+    public PlayerDamageListener(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
     }
 

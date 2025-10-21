@@ -1,22 +1,21 @@
-package me.mrostrich.uhcrunplugin.ui;
+package me.mrostrich.survivalgames.ui;
 
-import me.mrostrich.uhcrunplugin.GameManager;
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.GameManager;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class BossBarTask {
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
     private BukkitRunnable task;
     private final BossBar bossBar;
     private final double initialRadius;
 
-    public BossBarTask(UhcRunPlugin plugin) {
+    public BossBarTask(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
         this.bossBar = Bukkit.createBossBar("", BarColor.BLUE, BarStyle.SOLID);
         this.initialRadius = plugin.getConfig().getDouble("initial-border-diameter", 1500.0) / 2.0;
@@ -32,6 +31,7 @@ public class BossBarTask {
                 GameManager gm = plugin.getGameManager();
 
                 Bukkit.getOnlinePlayers().forEach(p -> {
+                    if (gm.isExempt(p)) return;
                     if (!bossBar.getPlayers().contains(p)) bossBar.addPlayer(p);
 
                     switch (gm.getState()) {
@@ -50,25 +50,17 @@ public class BossBarTask {
                             bossBar.setVisible(true);
                             bossBar.setColor(BarColor.RED);
 
-                            Location center = p.getWorld().getWorldBorder().getCenter();
-                            double halfSize = p.getWorld().getWorldBorder().getSize() / 2.0;
+                            Location spawn = Bukkit.getWorld("world").getSpawnLocation();
+                            double borderRadius = p.getWorld().getWorldBorder().getSize() / 2.0;
 
-                            double minX = center.getX() - halfSize;
-                            double maxX = center.getX() + halfSize;
-                            double minZ = center.getZ() - halfSize;
-                            double maxZ = center.getZ() + halfSize;
+                            double dx = Math.abs(spawn.getX() - p.getLocation().getX());
+                            double dz = Math.abs(spawn.getZ() - p.getLocation().getZ());
+                            double distanceFromSpawn = Math.sqrt(dx * dx + dz * dz);
+                            double distanceToBorder = Math.max(0, borderRadius - distanceFromSpawn);
 
-                            double px = p.getLocation().getX();
-                            double pz = p.getLocation().getZ();
+                            bossBar.setTitle("§cDistance from spawn to border: §f" + (int) distanceToBorder + " blocks");
 
-                            double distX = Math.min(Math.abs(px - minX), Math.abs(maxX - px));
-                            double distZ = Math.min(Math.abs(pz - minZ), Math.abs(maxZ - pz));
-
-                            double distanceToBorder = Math.min(distX, distZ);
-
-                            bossBar.setTitle("§cBorder distance from you: §f" + (int) distanceToBorder + " blocks");
-
-                            double progress = Math.max(0.0, Math.min(1.0, gm.getCurrentBorderRadius() / Math.max(1.0, initialRadius)));
+                            double progress = 1.0 - Math.max(0.0, Math.min(1.0, gm.getCurrentBorderRadius() / initialRadius));
                             bossBar.setProgress(progress);
                         }
                     }

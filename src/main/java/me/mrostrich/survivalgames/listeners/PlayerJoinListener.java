@@ -1,7 +1,7 @@
-package me.mrostrich.uhcrunplugin.listeners;
+package me.mrostrich.survivalgames.listeners;
 
-import me.mrostrich.uhcrunplugin.GameManager;
-import me.mrostrich.uhcrunplugin.UhcRunPlugin;
+import me.mrostrich.survivalgames.GameManager;
+import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.GameMode;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -9,9 +9,9 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 public class PlayerJoinListener implements Listener {
 
-    private final UhcRunPlugin plugin;
+    private final SurvivalGamesPlugin plugin;
 
-    public PlayerJoinListener(UhcRunPlugin plugin) {
+    public PlayerJoinListener(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
     }
 

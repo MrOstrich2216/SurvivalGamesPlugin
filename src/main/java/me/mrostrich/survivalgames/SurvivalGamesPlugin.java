@@ -1,13 +1,13 @@
-package me.mrostrich.uhcrunplugin;
+package me.mrostrich.survivalgames;
 
-import me.mrostrich.uhcrunplugin.commands.UhcCommand;
-import me.mrostrich.uhcrunplugin.listeners.PlayerDamageListener;
-import me.mrostrich.uhcrunplugin.listeners.PlayerDeathListener;
-import me.mrostrich.uhcrunplugin.listeners.PlayerJoinListener;
-import me.mrostrich.uhcrunplugin.listeners.RecorderCompassListener;
-import me.mrostrich.uhcrunplugin.ui.ActionBarTask;
-import me.mrostrich.uhcrunplugin.ui.BossBarTask;
-import me.mrostrich.uhcrunplugin.ui.ScoreboardTask;
+import me.mrostrich.survivalgames.commands.GameCommands;
+import me.mrostrich.survivalgames.listeners.PlayerDamageListener;
+import me.mrostrich.survivalgames.listeners.PlayerDeathListener;
+import me.mrostrich.survivalgames.listeners.PlayerJoinListener;
+import me.mrostrich.survivalgames.listeners.RecorderCompassListener;
+import me.mrostrich.survivalgames.ui.ActionBarTask;
+import me.mrostrich.survivalgames.ui.BossBarTask;
+import me.mrostrich.survivalgames.ui.ScoreboardTask;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.World;
@@ -15,8 +15,11 @@ import org.bukkit.WorldCreator;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.OfflinePlayer;
+import java.util.List;
+import java.util.UUID;
 
-public class UhcRunPlugin extends JavaPlugin {
+public class SurvivalGamesPlugin extends JavaPlugin {
 
     private GameManager gameManager;
     private boolean pluginEnabled;
@@ -45,12 +48,19 @@ public class UhcRunPlugin extends JavaPlugin {
 
         // Command is always registered; logic is gated behind enable flag
         if (getCommand("uhc") != null) {
-            getCommand("uhc").setExecutor(new UhcCommand(this));
+            getCommand("uhc").setExecutor(new GameCommands(this));
         }
 
         if (pluginEnabled) {
             enableSystems();
         }
+    }
+
+    public boolean isExempt(UUID id) {
+        OfflinePlayer op = Bukkit.getOfflinePlayer(id);
+        String name = op.getName();
+        List<String> exemptList = getConfig().getStringList("exempt-users");
+        return name != null && exemptList.stream().anyMatch(ex -> name.equalsIgnoreCase(ex));
     }
 
     @Override
