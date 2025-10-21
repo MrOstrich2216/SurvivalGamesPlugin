@@ -1,6 +1,6 @@
-# 🏹 UHC Run Plugin
+# 🏹 Survival Games Plugin
 Hi, this is MrOstrich. Im happy that you are here. This is a Minecraft Plugin i've build for a Gaming Competition in my School using Copilot (though ai this is good). This is mainly built in thought of LAN servers.
-So it is kinda a UHC RUN plugin. It's just this has natural regeneration so no golden heads. Keeping it easy for players.
+So it is kinda based upon UHC RUN plugin. It's just this has natural regeneration so no golden heads. Keeping it easy for players.
 
 ---
 
