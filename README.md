@@ -29,7 +29,7 @@ Hi, this is MrOstrich — glad you're here! This is a Minecraft plugin I built f
 ## 📦 Installation
 
 1. Clone or download this repository
-2. Build the plugin using IntelliJ + Gradle or Maven  
+2. Build the plugin using IntelliJ + Maven  
    ⚠️ *Note: The entire source code is UTF-8 encoded*
 3. Place the compiled `.jar` into your server’s `/plugins` folder
 4. Restart the server
