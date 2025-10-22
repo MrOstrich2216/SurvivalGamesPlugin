@@ -239,10 +239,13 @@ public class GameManager {
     public void checkFinalFightAcceleration() {
         List<String> exempt = plugin.getConfig().getStringList("exempt-users");
 
-        if ((state == State.FIGHT || state == State.GRACE)) {
-            Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-            Team aliveTeam = board.getTeam("alive");
-            int aliveCount = aliveTeam != null ? aliveTeam.getSize() : getAliveCount();
+        if (state == State.FIGHT || state == State.GRACE) {
+            // Count alive players excluding exempt users
+            long aliveCount = getAlive().stream()
+                    .map(Bukkit::getOfflinePlayer)
+                    .filter(op -> op.getName() != null && !exempt.contains(op.getName()))
+                    .count();
+
             if (aliveCount <= finalFightThreshold) {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
@@ -253,6 +256,7 @@ public class GameManager {
                 this.state = State.FINAL_FIGHT;
                 startBorderShrink(shrinkRateFinal);
 
+                Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
                 Team redTeam = board.getTeam("finalFight");
                 if (redTeam == null) {
                     redTeam = board.registerNewTeam("finalFight");
@@ -268,8 +272,6 @@ public class GameManager {
             }
         }
     }
-
-
 
     public void recordKill(Player killer) {
         if (killer == null) return;
