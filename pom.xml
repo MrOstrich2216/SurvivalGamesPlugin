@@ -26,12 +26,31 @@
     </repositories>
 
     <dependencies>
+        <!-- Paper API -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>${paper.version}</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Spigot server jar via BuildTools for NMS access -->
+    <dependency>
+        <groupId>org.spigotmc</groupId>
+        <artifactId>spigot-nms</artifactId>
+        <version>1.21.4-R0.1-SNAPSHOT</version>
+        <scope>system</scope>
+        <systemPath>${project.basedir}/lib/spigot-1.21.4-R0.1-SNAPSHOT.jar</systemPath>
+    </dependency>
+
+        <!-- Netty for required classes and imports for the files -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.100.Final</version> <!-- Or latest stable -->
+            <scope>provided</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

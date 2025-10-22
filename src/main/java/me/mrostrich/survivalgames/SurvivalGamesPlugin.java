@@ -8,18 +8,24 @@ import me.mrostrich.survivalgames.listeners.RecorderCompassListener;
 import me.mrostrich.survivalgames.ui.ActionBarTask;
 import me.mrostrich.survivalgames.ui.BossBarTask;
 import me.mrostrich.survivalgames.ui.ScoreboardTask;
+import net.minecraft.server.level.EntityPlayer;
+import net.minecraft.server.network.ITextFilter;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.OfflinePlayer;
+
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 
 public class SurvivalGamesPlugin extends JavaPlugin {
+
+    public static Field FILTER_FIELD; // ✅ Added for hardcore hearts injection
 
     private GameManager gameManager;
     private boolean pluginEnabled;
@@ -34,6 +40,15 @@ public class SurvivalGamesPlugin extends JavaPlugin {
         saveDefaultConfig();
         FileConfiguration cfg = getConfig();
         this.pluginEnabled = cfg.getBoolean("plugin-enabled", false);
+
+        // ✅ Initialize FILTER_FIELD for hardcore hearts injection
+        for (Field f : EntityPlayer.class.getDeclaredFields()) {
+            if (f.getType() == ITextFilter.class) {
+                f.setAccessible(true);
+                FILTER_FIELD = f;
+                break;
+            }
+        }
 
         // Ensure overworld exists (Terraform Generator handles terrain)
         World world = Bukkit.getWorld("world");

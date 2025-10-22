@@ -133,8 +133,6 @@ public class GameManager {
                     p.teleport(target);
                 }
                 p.setGameMode(GameMode.SURVIVAL);
-                p.setHealthScale(20.0);
-                p.setHealth(20.0);
             } else {
                 // Recorder setup: Creative + Invisibility
                 Bukkit.getLogger().info("Recorder teleported to spawn: " + spawn); //Just for Debug
