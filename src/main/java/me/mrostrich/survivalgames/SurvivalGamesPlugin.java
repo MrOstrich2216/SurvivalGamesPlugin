@@ -62,8 +62,9 @@ public class SurvivalGamesPlugin extends JavaPlugin {
         this.gameManager = new GameManager(this);
 
         // Command is always registered; logic is gated behind enable flag
-        if (getCommand("uhc") != null) {
-            getCommand("uhc").setExecutor(new GameCommands(this));
+        if (getCommand("game") != null) {
+            getCommand("game").setExecutor(new GameCommands(this));
+            getCommand("game").setTabCompleter(new GameCommands(this));
         }
 
         if (pluginEnabled) {
