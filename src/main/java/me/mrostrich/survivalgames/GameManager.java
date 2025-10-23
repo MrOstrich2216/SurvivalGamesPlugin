@@ -54,17 +54,30 @@ public class GameManager {
 
     public GameManager(SurvivalGamesPlugin plugin) {
         this.plugin = plugin;
-        this.graceSeconds = plugin.getConfig().getInt("grace-seconds", 600);
-        this.initialBorderDiameter = plugin.getConfig().getDouble("initial-border-diameter", 1500.0);
-        this.shrinkRateFight = plugin.getConfig().getDouble("shrink-rate-fight", 0.5);
-        this.shrinkRateFinal = plugin.getConfig().getDouble("shrink-rate-final", 1.5);
-        this.finalFightThreshold = plugin.getConfig().getInt("final-fight-threshold", 10);
-        this.minBorderDiameter = plugin.getConfig().getDouble("min-border-diameter", 32.0);
+
+        // Load config values
+        this.graceSeconds = plugin.getConfig().getInt("grace-seconds");
+        this.initialBorderDiameter = plugin.getConfig().getDouble("initial-border-diameter");
+        this.shrinkRateFight = plugin.getConfig().getDouble("shrink-rate-fight");
+        this.shrinkRateFinal = plugin.getConfig().getDouble("shrink-rate-final");
+        this.finalFightThreshold = plugin.getConfig().getInt("final-fight-threshold");
+        this.minBorderDiameter = plugin.getConfig().getDouble("min-border-diameter");
         this.exemptUsers = new HashSet<>(plugin.getConfig().getStringList("exempt-users"));
 
+        // Initialize runtime values
         this.currentBorderDiameter = initialBorderDiameter;
         this.graceRemaining = graceSeconds;
+
+        // ✅ Log loaded config values
+        plugin.getLogger().info("Config loaded: graceSeconds=" + graceSeconds +
+                ", initialBorderDiameter=" + initialBorderDiameter +
+                ", shrinkRateFight=" + shrinkRateFight +
+                ", shrinkRateFinal=" + shrinkRateFinal +
+                ", finalFightThreshold=" + finalFightThreshold +
+                ", minBorderDiameter=" + minBorderDiameter +
+                ", exemptUsers=" + exemptUsers);
     }
+
 
     public State getState() { return state; }
     public int getGraceRemaining() { return graceRemaining; }

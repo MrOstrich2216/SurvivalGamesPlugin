@@ -97,18 +97,31 @@ public final class TeleportUtil {
      * @param plugin The plugin instance.
      */
     public static void setupMod(Player player, SurvivalGamesPlugin plugin) {
+        plugin.getLogger().info("setupMod called for " + player.getName());
+
+        // Core mod setup
         player.setGameMode(GameMode.CREATIVE);
         player.setHealthScale(20.0);
         player.setHealth(20.0);
+        player.setInvisible(true); // Entity-level invisibility
+        player.setCollidable(false); // Prevent collisions
+
+        // Potion effects
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, false, false));
         player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 1, false, false));
 
+        // Hide from others
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (!other.equals(player)) {
                 other.hidePlayer(plugin, player);
             }
         }
 
+        // Give compass
         giveRecorderCompass(player, plugin);
+
+        // Optional: remove from tab list (requires ProtocolLib or scoreboard tricks)
+        // Optional: suppress join/leave messages if mod reconnects
     }
+
 }

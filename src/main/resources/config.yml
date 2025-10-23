@@ -1,4 +1,4 @@
-plugin-enabled: false
+plugin-enabled: true
 grace-seconds: 180 //Grace Period time limit
 initial-border-diameter: 500.0 //Area of world under border
 shrink-rate-fight: 1 //Shink rate after grace period
