@@ -3,10 +3,12 @@ package me.mrostrich.survivalgames.ui;
 import me.mrostrich.survivalgames.GameManager;
 import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
+import org.bukkit.ChatColor;
+import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class BossBarTask {
@@ -29,42 +31,52 @@ public class BossBarTask {
                 if (!plugin.isPluginEnabledFlag()) return;
 
                 GameManager gm = plugin.getGameManager();
+                World world = Bukkit.getWorld("world");
+                if (world == null) return;
 
-                Bukkit.getOnlinePlayers().forEach(p -> {
-                    if (gm.isExempt(p)) return;
-                    if (!bossBar.getPlayers().contains(p)) bossBar.addPlayer(p);
+                bossBar.removeAll();
 
-                    switch (gm.getState()) {
-                        case WAITING, ENDED -> bossBar.setVisible(false);
-
-                        case GRACE -> {
-                            bossBar.setVisible(true);
-                            bossBar.setColor(BarColor.BLUE);
-                            int secs = gm.getGraceRemaining();
-                            bossBar.setTitle("§bGrace Period: §f" + formatMMSS(secs));
-                            double progress = Math.max(0.0, Math.min(1.0, secs / (double) Math.max(1, plugin.getConfig().getInt("grace-seconds", 600))));
-                            bossBar.setProgress(progress);
-                        }
-
-                        case FIGHT, FINAL_FIGHT -> {
-                            bossBar.setVisible(true);
-                            bossBar.setColor(BarColor.RED);
-
-                            Location spawn = Bukkit.getWorld("world").getSpawnLocation();
-                            double borderRadius = p.getWorld().getWorldBorder().getSize() / 2.0;
-
-                            double dx = Math.abs(spawn.getX() - p.getLocation().getX());
-                            double dz = Math.abs(spawn.getZ() - p.getLocation().getZ());
-                            double distanceFromSpawn = Math.sqrt(dx * dx + dz * dz);
-                            double distanceToBorder = Math.max(0, borderRadius - distanceFromSpawn);
-
-                            bossBar.setTitle("§cDistance from spawn to border: §f" + (int) distanceToBorder + " blocks");
-
-                            double progress = 1.0 - Math.max(0.0, Math.min(1.0, gm.getCurrentBorderRadius() / initialRadius));
-                            bossBar.setProgress(progress);
-                        }
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!plugin.isExempt(p)) {
+                        bossBar.addPlayer(p);
                     }
-                });
+                }
+
+                switch (gm.getState()) {
+                    case WAITING, ENDED -> {
+                        bossBar.setVisible(false);
+                    }
+
+                    case GRACE -> {
+                        bossBar.setVisible(true);
+                        bossBar.setColor(BarColor.BLUE);
+
+                        int secs = gm.getGraceRemaining();
+                        double progress = Math.max(0.0, Math.min(1.0,
+                                secs / (double) Math.max(1, plugin.getConfig().getInt("grace-seconds", 600))));
+
+                        String title = "§bGrace Period: §f" + formatMMSS(secs);
+                        double border = world.getWorldBorder().getSize();
+                        title += ChatColor.GRAY + " | Zone: " + String.format("%.0f", border) + "m";
+
+                        bossBar.setTitle(title);
+                        bossBar.setProgress(progress);
+                    }
+
+                    case FIGHT, FINAL_FIGHT -> {
+                        bossBar.setVisible(true);
+                        bossBar.setColor(BarColor.RED);
+
+                        double border = world.getWorldBorder().getSize();
+                        String title = "§cZone Diameter: §f" + String.format("%.0f", border) + " blocks";
+
+                        bossBar.setTitle(title);
+
+                        double progress = 1.0 - Math.max(0.0, Math.min(1.0,
+                                gm.getCurrentBorderRadius() / initialRadius));
+                        bossBar.setProgress(progress);
+                    }
+                }
             }
         };
         task.runTaskTimer(plugin, 0L, 20L);

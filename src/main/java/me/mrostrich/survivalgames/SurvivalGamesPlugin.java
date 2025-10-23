@@ -13,6 +13,7 @@ import net.minecraft.server.network.ITextFilter;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -77,6 +78,10 @@ public class SurvivalGamesPlugin extends JavaPlugin {
         String name = op.getName();
         List<String> exemptList = getConfig().getStringList("exempt-users");
         return name != null && exemptList.stream().anyMatch(ex -> name.equalsIgnoreCase(ex));
+    }
+
+    public boolean isExempt(Player player) {
+        return isExempt(player.getUniqueId());
     }
 
     @Override

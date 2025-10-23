@@ -8,6 +8,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.command.CommandSender;
@@ -122,7 +123,6 @@ public class GameManager {
 
         List<String> exempt = plugin.getConfig().getStringList("exempt-users");
 
-
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (!exempt.contains(p.getName())) {
                 alive.add(p.getUniqueId());
@@ -134,23 +134,10 @@ public class GameManager {
                 }
                 p.setGameMode(GameMode.SURVIVAL);
             } else {
-                // Recorder setup: Creative + Invisibility
-                Bukkit.getLogger().info("Recorder teleported to spawn: " + spawn); //Just for Debug
-                p.setGameMode(GameMode.CREATIVE);
-                p.setHealthScale(20.0);
-                p.setHealth(20.0);
-                p.addPotionEffect(new PotionEffect(
-                        PotionEffectType.INVISIBILITY,
-                        Integer.MAX_VALUE,
-                        1,
-                        false,
-                        false
-                ));
-                for (Player other : Bukkit.getOnlinePlayers()) {
-                    if (!other.equals(p)) {
-                        other.hidePlayer(plugin, p);
-                    }
-                }
+                // Full mod setup: teleport + invis + compass
+                Bukkit.getLogger().info("Recorder teleported to spawn: " + spawn);
+                p.teleport(spawn);
+                TeleportUtil.setupMod(p, plugin);
             }
         }
 
@@ -189,14 +176,29 @@ public class GameManager {
         teleportedOnJoin.clear();
     }
 
+
     private void onGraceEnd() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
         }
+
         Bukkit.broadcastMessage(ChatColor.RED + "" + ChatColor.BOLD + "Grace period ended! PvP is now enabled.");
-        startBorderShrink(shrinkRateFight);
-        this.state = (alive.size() <= finalFightThreshold) ? State.FINAL_FIGHT : State.FIGHT;
+
+        long aliveCount = getAlive().stream()
+                .filter(id -> !plugin.isExempt(id))
+                .count();
+
+        if (aliveCount <= finalFightThreshold) {
+            this.state = State.FINAL_FIGHT;
+            startBorderShrink(shrinkRateFinal);
+            Bukkit.broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Final fight begins! "
+                    + ChatColor.GRAY + "Border shrinking faster.");
+        } else {
+            this.state = State.FIGHT;
+            startBorderShrink(shrinkRateFight);
+        }
     }
+
 
     private void startBorderShrink(double ratePerSecond) {
         if (borderTask != null) borderTask.cancel();
@@ -212,36 +214,38 @@ public class GameManager {
                 currentBorderDiameter = Math.max(minBorderDiameter, currentBorderDiameter - ratePerSecond);
 
                 World world = Bukkit.getWorld("world");
-                if (world == null) world = Bukkit.getWorlds().get(0);
-                if (world != null) {
-                    world.getWorldBorder().setSize(currentBorderDiameter);
-                    world.getWorldBorder().setCenter(world.getSpawnLocation()); // ensure center is locked
-                    world.getWorldBorder().setWarningDistance(10); // red screen warning
+                if (world == null) {
+                    List<World> worlds = Bukkit.getWorlds();
+                    if (worlds.isEmpty()) {
+                        plugin.getLogger().warning("No worlds available for border shrink.");
+                        this.cancel();
+                        return;
+                    }
+                    world = worlds.get(0);
                 }
 
-                // Live tracker: show border size to all players
-                String msg = ChatColor.AQUA + "Border: " + ChatColor.YELLOW + String.format("%.1f", currentBorderDiameter) + " blocks";
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    p.sendActionBar(msg);
-                }
+                Location center = world.getSpawnLocation();
+                WorldBorder border = world.getWorldBorder();
+                border.setSize(currentBorderDiameter);
+                border.setCenter(center);
+                border.setWarningDistance(10);
 
                 if (currentBorderDiameter <= minBorderDiameter + 0.001) {
+                    plugin.getLogger().info("Border reached minimum diameter: " + minBorderDiameter);
                     this.cancel();
                 }
             }
         };
+
         borderTask.runTaskTimer(plugin, 20L, 20L); // tick every second
     }
 
-
     public void checkFinalFightAcceleration() {
-        List<String> exempt = plugin.getConfig().getStringList("exempt-users");
+        if (state == State.FINAL_FIGHT) return; // Already in final fight — skip
 
         if (state == State.FIGHT || state == State.GRACE) {
-            // Count alive players excluding exempt users
             long aliveCount = getAlive().stream()
-                    .map(Bukkit::getOfflinePlayer)
-                    .filter(op -> op.getName() != null && !exempt.contains(op.getName()))
+                    .filter(id -> !plugin.isExempt(id))
                     .count();
 
             if (aliveCount <= finalFightThreshold) {
@@ -262,7 +266,7 @@ public class GameManager {
                 }
 
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (!exempt.contains(p.getName())) {
+                    if (!plugin.isExempt(p.getUniqueId())) {
                         p.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 1, false, false));
                         redTeam.addEntry(p.getName());
                     }
@@ -270,6 +274,8 @@ public class GameManager {
             }
         }
     }
+
+
 
     public void recordKill(Player killer) {
         if (killer == null) return;

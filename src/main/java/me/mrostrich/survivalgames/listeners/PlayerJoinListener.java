@@ -18,6 +18,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Field;
@@ -38,11 +40,23 @@ public class PlayerJoinListener implements Listener {
         GameManager gm = plugin.getGameManager();
         Player player = event.getPlayer();
 
-        if (gm.getState() == GameManager.State.WAITING && !gm.isExempt(player)) {
+        if (plugin.isExempt(player)) {
+            // Moderator setup (no compass here)
+            player.setGameMode(GameMode.CREATIVE);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 1, false, false));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, Integer.MAX_VALUE, 1, false, false)); // optional
+
+            for (Player other : plugin.getServer().getOnlinePlayers()) {
+                if (!other.equals(player)) {
+                    other.hidePlayer(plugin, player);
+                }
+            }
+        } else if (gm.getState() == GameManager.State.WAITING) {
             player.setGameMode(GameMode.ADVENTURE);
         }
 
         if (plugin.getConfig().getBoolean("visuals.hardcore-hearts")) {
+            plugin.getLogger().info("Attempting hardcore hearts injection for " + player.getName());
             injectHardcoreHearts(player);
         }
     }
@@ -50,19 +64,26 @@ public class PlayerJoinListener implements Listener {
     private void injectHardcoreHearts(Player player) {
         try {
             Method getHandle = player.getClass().getDeclaredMethod("getHandle");
-getHandle.setAccessible(true);
-EntityPlayer handle = (EntityPlayer) getHandle.invoke(player);
+            getHandle.setAccessible(true);
+            EntityPlayer handle = (EntityPlayer) getHandle.invoke(player);
 
             Field filterField = SurvivalGamesPlugin.FILTER_FIELD;
-            Object filter = filterField.get(handle);
+            Object originalFilter = filterField.get(handle);
+
+            if (originalFilter instanceof SpyingTextFilter) {
+                plugin.getLogger().info("Hardcore hearts already injected for " + player.getName());
+                return;
+            }
+
+            plugin.getLogger().info("Injecting SpyingTextFilter for " + player.getName());
 
             ReflectionUtil.setPrivateFinalField(
                     filterField,
                     handle,
-                    new SpyingTextFilter((ITextFilter) filter, () -> handleCallback(handle))
+                    new SpyingTextFilter((ITextFilter) originalFilter, () -> handleCallback(handle))
             );
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to inject hardcore hearts", e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to inject hardcore hearts for " + player.getName(), e);
         }
     }
 
@@ -71,6 +92,7 @@ EntityPlayer handle = (EntityPlayer) getHandle.invoke(player);
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
                 if (msg instanceof PacketPlayOutLogin login) {
+                    plugin.getLogger().info("Intercepting PacketPlayOutLogin for hardcore override");
                     PacketPlayOutLogin fakeLogin = new PacketPlayOutLogin(
                             login.b(), true, login.f(), login.g(), login.h(),
                             login.i(), login.j(), login.k(), login.l(), login.m(), login.n()
@@ -95,9 +117,14 @@ EntityPlayer handle = (EntityPlayer) getHandle.invoke(player);
             channelField.setAccessible(true);
             Channel channel = (Channel) channelField.get(netMan);
 
-            channel.pipeline().addBefore("packet_handler", "hardcore_injector", injector);
+            if (channel.pipeline().get("hardcore_injector") == null) {
+                plugin.getLogger().info("Injecting Netty channel for hardcore hearts");
+                channel.pipeline().addBefore("packet_handler", "hardcore_injector", injector);
+            } else {
+                plugin.getLogger().info("Netty injector already present for " + handle.getBukkitEntity().getName());
+            }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to inject Netty channel", e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to inject Netty channel for hardcore hearts", e);
         }
     }
 }

@@ -62,7 +62,12 @@ public class ScoreboardTask {
                         case FINAL_FIGHT -> "§4§l";
                         default -> "§f";
                     };
-                    setLine(board, obj, line--, aliveColor + "Players Left: §f" + gm.getAliveCount());
+
+                    int aliveCount = (int) Bukkit.getOnlinePlayers().stream()
+                            .filter(pl -> !plugin.isExempt(pl.getUniqueId()))
+                            .count();
+
+                    setLine(board, obj, line--, aliveColor + "Players Left: §f" + aliveCount);
 
                     setLine(board, obj, line--, "§eTop Killer:");
 
@@ -93,9 +98,23 @@ public class ScoreboardTask {
                                 .filter(id -> !plugin.isExempt(id))
                                 .collect(Collectors.toList());
 
-                        String first = aliveList.isEmpty() ? "Unknown" : Bukkit.getOfflinePlayer(aliveList.get(0)).getName();
-                        String second = deaths.size() >= 1 ? Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 1)).getName() : "Unknown";
-                        String third = deaths.size() >= 2 ? Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 2)).getName() : "Unknown";
+                        String first = "Unknown";
+                        if (!aliveList.isEmpty()) {
+                            OfflinePlayer op = Bukkit.getOfflinePlayer(aliveList.get(0));
+                            if (op.getName() != null) first = op.getName();
+                        }
+
+                        String second = "Unknown";
+                        if (deaths.size() >= 1) {
+                            OfflinePlayer op = Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 1));
+                            if (op.getName() != null) second = op.getName();
+                        }
+
+                        String third = "Unknown";
+                        if (deaths.size() >= 2) {
+                            OfflinePlayer op = Bukkit.getOfflinePlayer(deaths.get(deaths.size() - 2));
+                            if (op.getName() != null) third = op.getName();
+                        }
 
                         setLine(board, obj, line--, "§61st: " + first);
                         setLine(board, obj, line--, "§72nd: " + second);

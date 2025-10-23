@@ -4,6 +4,7 @@ import me.mrostrich.survivalgames.GameManager;
 import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class ActionBarTask {
@@ -31,7 +32,11 @@ public class ActionBarTask {
                     case ENDED -> "§5The nightmare is over. §7May the last one standing win.";
                 };
 
-                Bukkit.getOnlinePlayers().forEach(p -> p.sendActionBar(Component.text(msg)));
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!plugin.isExempt(p.getUniqueId())) {
+                        p.sendActionBar(Component.text(msg));
+                    }
+                }
             }
         };
         task.runTaskTimer(plugin, 0L, 20L);
