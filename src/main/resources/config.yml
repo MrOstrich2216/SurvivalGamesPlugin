@@ -1,9 +1,13 @@
+# SurvivalGamesPlugin configuration
 plugin-enabled: true
-grace-seconds: 180 //Grace Period time limit
-initial-border-diameter: 500.0 //Area of world under border
-shrink-rate-fight: 1 //Shink rate after grace period
-shrink-rate-final: 2 //Shrink rate after final fight required no. of players are there
-final-fight-threshold: 10 //Amount of players required for final fight phase to start
-min-border-diameter: 32.0 //Minimum size of border after shink
-exempt-users: //Simply add the names of admins under here
+grace-seconds: 180
+initial-border-diameter: 500.0
+shrink-rate-fight: 1.0
+shrink-rate-final: 2.0
+final-fight-threshold: 2
+min-border-diameter: 32.0
+exempt-users:
   - "Recorder"
+
+visuals:
+  hardcore-hearts: true

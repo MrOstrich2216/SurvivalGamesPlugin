@@ -1,142 +1,213 @@
 package me.mrostrich.survivalgames;
 
 import me.mrostrich.survivalgames.commands.GameCommands;
-import me.mrostrich.survivalgames.listeners.PlayerDamageListener;
-import me.mrostrich.survivalgames.listeners.PlayerDeathListener;
-import me.mrostrich.survivalgames.listeners.PlayerJoinListener;
-import me.mrostrich.survivalgames.listeners.RecorderCompassListener;
+import me.mrostrich.survivalgames.inject.HardcorePacketInjector;
+import me.mrostrich.survivalgames.listeners.*;
+import me.mrostrich.survivalgames.state.MatchState;
 import me.mrostrich.survivalgames.ui.ActionBarTask;
 import me.mrostrich.survivalgames.ui.BossBarTask;
 import me.mrostrich.survivalgames.ui.ScoreboardTask;
-import net.minecraft.server.level.EntityPlayer;
-import net.minecraft.server.network.ITextFilter;
+import me.mrostrich.survivalgames.ui.TabManager;
+import me.mrostrich.survivalgames.util.TeleportUtil;
 import org.bukkit.Bukkit;
-import org.bukkit.GameRule;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.lang.reflect.Field;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class SurvivalGamesPlugin extends JavaPlugin {
 
-    public static Field FILTER_FIELD; // ✅ Added for hardcore hearts injection
-
     private GameManager gameManager;
-    private boolean pluginEnabled;
-
-    // UI tasks
+    private TabManager tabManager;
     private ActionBarTask actionBarTask;
     private BossBarTask bossBarTask;
     private ScoreboardTask scoreboardTask;
 
+    private volatile boolean pluginEnabledFlag = false;
+
+    private final Set<String> exemptCache = new HashSet<>();
+
+    @Override
+    public void onLoad() {
+        // Ensure config defaults exist
+        saveDefaultConfig();
+    }
+
     @Override
     public void onEnable() {
-        saveDefaultConfig();
-        FileConfiguration cfg = getConfig();
-        this.pluginEnabled = cfg.getBoolean("plugin-enabled", false);
-
-        // ✅ Initialize FILTER_FIELD for hardcore hearts injection
-        for (Field f : EntityPlayer.class.getDeclaredFields()) {
-            if (f.getType() == ITextFilter.class) {
-                f.setAccessible(true);
-                FILTER_FIELD = f;
-                break;
-            }
+        // Basic initialization
+        try {
+            reloadConfig();
+        } catch (Throwable t) {
+            getLogger().log(Level.WARNING, "Failed to load config: " + t.getMessage(), t);
         }
 
-        // Ensure overworld exists (Terraform Generator handles terrain)
-        World world = Bukkit.getWorld("world");
-        if (world == null) {
-            world = Bukkit.createWorld(new WorldCreator("world"));
-        }
-        if (world != null) {
-            world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-        }
-
+        // Initialize core managers
         this.gameManager = new GameManager(this);
+        this.tabManager = new TabManager(this);
+        this.actionBarTask = new ActionBarTask(this);
+        this.bossBarTask = new BossBarTask(this);
+        this.scoreboardTask = new ScoreboardTask(this);
 
-        // Command is always registered; logic is gated behind enable flag
-        if (getCommand("game") != null) {
-            getCommand("game").setExecutor(new GameCommands(this));
-            getCommand("game").setTabCompleter(new GameCommands(this));
+        // Commands
+        var gameCmd = new GameCommands(this);
+        getCommand("game").setExecutor(gameCmd);
+        getCommand("game").setTabCompleter(gameCmd);
+
+        // Register listeners (listeners check pluginEnabledFlag and GameManager where needed)
+        PluginManager pm = Bukkit.getPluginManager();
+        pm.registerEvents(new PlayerJoinListener(this), this);
+        pm.registerEvents(new PlayerDeathListener(this), this);
+        pm.registerEvents(new PlayerDamageListener(this), this);
+        pm.registerEvents(new RecorderCompassListener(this), this);
+
+        // Attempt ProtocolLib injection registration; guard with try/catch
+        try {
+            HardcorePacketInjector.register(this);
+        } catch (Throwable t) {
+            getLogger().log(Level.INFO, "ProtocolLib not available or injector failed: " + t.getMessage());
         }
 
-        if (pluginEnabled) {
+        // Prepare exempt cache and initial enabled flag from config
+        reloadExemptCache();
+        this.pluginEnabledFlag = getConfig().getBoolean("plugin-enabled", true);
+
+        // If plugin is marked enabled in config, start systems
+        if (this.pluginEnabledFlag) {
             enableSystems();
         }
-    }
 
-    public boolean isExempt(UUID id) {
-        OfflinePlayer op = Bukkit.getOfflinePlayer(id);
-        String name = op.getName();
-        List<String> exemptList = getConfig().getStringList("exempt-users");
-        return name != null && exemptList.stream().anyMatch(ex -> name.equalsIgnoreCase(ex));
-    }
-
-    public boolean isExempt(Player player) {
-        return isExempt(player.getUniqueId());
+        getLogger().info("SurvivalGamesPlugin v" + getDescription().getVersion() + " enabled. plugin-enabled=" + pluginEnabledFlag);
     }
 
     @Override
     public void onDisable() {
-        disableSystems();
+        // Gracefully stop running systems
+        try {
+            disableSystems();
+        } catch (Throwable t) {
+            getLogger().log(Level.WARNING, "Error while disabling systems: " + t.getMessage(), t);
+        }
+        getLogger().info("SurvivalGamesPlugin disabled.");
+    }
+
+    /* ------------------------
+       Systems management
+       ------------------------ */
+
+    public synchronized void enableSystems() {
+        if (pluginEnabledFlag) {
+            getLogger().info("enableSystems called but plugin already enabled.");
+        }
+        pluginEnabledFlag = true;
+
+        // Start UI tasks
+        try { actionBarTask.start(); } catch (Throwable t) { getLogger().warning("ActionBarTask failed to start: " + t.getMessage()); }
+        try { bossBarTask.start(); } catch (Throwable t) { getLogger().warning("BossBarTask failed to start: " + t.getMessage()); }
+        try { scoreboardTask.start(); } catch (Throwable t) { getLogger().warning("ScoreboardTask failed to start: " + t.getMessage()); }
+
+        // Ensure tab refresh for all players
+        try { tabManager.updateAllTabs(); } catch (Throwable t) { getLogger().warning("TabManager update failed: " + t.getMessage()); }
+    }
+
+    public synchronized void disableSystems() {
+        pluginEnabledFlag = false;
+
+        // Stop UI tasks
+        try { actionBarTask.stop(); } catch (Throwable ignored) {}
+        try { bossBarTask.stop(); } catch (Throwable ignored) {}
+        try { scoreboardTask.stop(); } catch (Throwable ignored) {}
+
+        // Reset match state and perform a neutral cleanup
+        try {
+            if (gameManager != null) gameManager.forceStop();
+        } catch (Throwable t) {
+            getLogger().warning("GameManager.forceStop error: " + t.getMessage());
+        }
+
+        // Clear tabs for players
+        try {
+            tabManager.updateAllTabs();
+        } catch (Throwable ignored) {}
+    }
+
+    /* ------------------------
+       Utility / accessors
+       ------------------------ */
+
+    public synchronized void reloadExemptCache() {
+        exemptCache.clear();
+        try {
+            var list = getConfig().getStringList("exempt-users");
+            if (list != null) exemptCache.addAll(list);
+        } catch (Throwable t) {
+            getLogger().warning("Failed to reload exempt cache: " + t.getMessage());
+        }
+        getLogger().info("Exempt cache reloaded: " + exemptCache);
+    }
+
+    public boolean isExempt(org.bukkit.OfflinePlayer p) {
+        if (p == null) return false;
+        String name = p.getName();
+        return name != null && exemptCache.contains(name);
+    }
+
+    public boolean isExempt(org.bukkit.entity.Player p) {
+        if (p == null) return false;
+        return isExempt((org.bukkit.OfflinePlayer) p);
+    }
+
+    public boolean isExempt(UUID id) {
+        Player player = Bukkit.getPlayer(id);
+        if (player != null) return isExempt(player);
+        OfflinePlayer offline = Bukkit.getOfflinePlayer(id);
+        return isExempt(offline);
+    }
+
+    public Set<String> getExemptUsers() {
+        return Set.copyOf(exemptCache);
+    }
+
+    public synchronized void setPluginEnabledFlag(boolean enabled) {
+        this.pluginEnabledFlag = enabled;
+        getConfig().set("plugin-enabled", enabled);
+        saveConfig();
+    }
+
+    public boolean isPluginEnabledFlag() {
+        return pluginEnabledFlag;
     }
 
     public GameManager getGameManager() {
         return gameManager;
     }
 
-    public boolean isPluginEnabledFlag() {
-        return pluginEnabled;
+    public TabManager getTabManager() {
+        return tabManager;
     }
 
-    public void setPluginEnabledFlag(boolean enabled) {
-        this.pluginEnabled = enabled;
-        getConfig().set("plugin-enabled", enabled);
-        saveConfig();
+    public MatchState getMatchState() {
+        try {
+            if (gameManager != null) return gameManager.getMatchState();
+        } catch (Throwable ignored) {}
+        return MatchState.WAITING;
     }
 
-    public void enableSystems() {
-        // Register listeners
-        Bukkit.getPluginManager().registerEvents(new PlayerJoinListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new PlayerDeathListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new PlayerDamageListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new RecorderCompassListener(this), this);
+    /* ------------------------
+       Convenience helpers
+       ------------------------ */
 
-        // Enforce pre-game adventure for non-exempt if waiting
-        if (gameManager.getState() == GameManager.State.WAITING) {
-            Bukkit.getOnlinePlayers().forEach(p -> {
-                if (!gameManager.isExempt(p)) {
-                    p.setGameMode(org.bukkit.GameMode.ADVENTURE);
-                }
-            });
-        }
+    public void logInfo(String msg) { getLogger().info(msg); }
+    public void logWarn(String msg) { getLogger().warning(msg); }
+    public void logSevere(String msg) { getLogger().severe(msg); }
 
-        // Start UI tasks
-        actionBarTask = new ActionBarTask(this);
-        bossBarTask = new BossBarTask(this);
-        scoreboardTask = new ScoreboardTask(this);
-
-        actionBarTask.start();
-        bossBarTask.start();
-        scoreboardTask.start();
-    }
-
-    public void disableSystems() {
-        if (actionBarTask != null) actionBarTask.stop();
-        if (bossBarTask != null) bossBarTask.stop();
-        if (scoreboardTask != null) scoreboardTask.stop();
-        HandlerList.unregisterAll(this);
-
-        if (gameManager != null) {
-            gameManager.forceStop();
-        }
+    /* Teleport utilities pass-through for other classes */
+    public TeleportUtil getTeleportUtil() {
+        return new TeleportUtil(); // TeleportUtil contains only static helpers; returning new for API parity is harmless
     }
 }

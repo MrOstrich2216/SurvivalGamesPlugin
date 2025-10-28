@@ -11,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class PlayerDeathListener implements Listener {
 
@@ -30,19 +31,20 @@ public class PlayerDeathListener implements Listener {
         Player victim = event.getEntity();
         Player killer = victim.getKiller();
 
-        // Build colored custom message
         String msg;
         if (killer != null) {
-            // Detect last damage for ranged info
             boolean ranged = false;
             double distance = -1;
 
             if (victim.getLastDamageCause() instanceof EntityDamageByEntityEvent last) {
                 if (last.getDamager() instanceof Projectile proj && proj.getShooter() instanceof Player shooter && shooter.equals(killer)) {
                     ranged = true;
-                    if (victim.getLocation().getWorld() != null && killer.getLocation().getWorld() != null
-                            && victim.getWorld().equals(killer.getWorld())) {
-                        distance = victim.getLocation().distance(killer.getLocation());
+                    try {
+                        if (victim.getWorld() != null && killer.getWorld() != null && victim.getWorld().equals(killer.getWorld())) {
+                            distance = victim.getLocation().distance(killer.getLocation());
+                        }
+                    } catch (Throwable ignored) {
+                        distance = -1;
                     }
                 }
             }
@@ -63,9 +65,7 @@ public class PlayerDeathListener implements Listener {
                             + ChatColor.GRAY + " with "
                             + ChatColor.DARK_RED + "bare hands";
                 } else {
-                    String weaponName = weapon.hasItemMeta() && weapon.getItemMeta().hasDisplayName()
-                            ? weapon.getItemMeta().getDisplayName()
-                            : formatMaterialName(weapon.getType());
+                    String weaponName = formatWeaponName(weapon);
                     msg = ChatColor.RED + "" + ChatColor.BOLD + victim.getName()
                             + ChatColor.GRAY + " was killed by "
                             + ChatColor.GREEN + "" + ChatColor.BOLD + killer.getName()
@@ -79,16 +79,31 @@ public class PlayerDeathListener implements Listener {
         }
 
         Bukkit.broadcastMessage(msg);
-        victim.getWorld().playSound(victim.getLocation(), org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
-        // Track stats
-        if (killer != null) {
-            plugin.getGameManager().recordKill(killer);
+
+        if (victim.getWorld() != null) {
+            try {
+                victim.getWorld().playSound(victim.getLocation(), org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.0f);
+            } catch (Throwable ignored) {}
         }
-        plugin.getGameManager().recordDeath(victim);
+
+        // Track stats via GameManager
+        try {
+            if (killer != null) plugin.getGameManager().recordKill(killer);
+            plugin.getGameManager().recordDeath(victim);
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Error recording kill/death: " + t.getMessage());
+        }
+
+        plugin.getLogger().info("Death processed: victim=" + victim.getName() + " killer=" + (killer != null ? killer.getName() : "null"));
     }
 
-    private String formatMaterialName(Material m) {
-        String s = m.name().toLowerCase().replace('_', ' ');
+    private String formatWeaponName(ItemStack weapon) {
+        if (weapon == null) return "Unknown";
+        ItemMeta meta = weapon.getItemMeta();
+        if (meta != null && meta.hasDisplayName()) {
+            return meta.getDisplayName();
+        }
+        String s = weapon.getType().name().toLowerCase().replace('_', ' ');
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }
