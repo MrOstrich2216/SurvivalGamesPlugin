@@ -16,12 +16,23 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <paper.version>1.21.4-R0.1-SNAPSHOT</paper.version>
+        <protocolib.version>5.1.0</protocolib.version>
     </properties>
 
     <repositories>
         <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+
+        <repository>
+            <id>codemc-repo</id>
+            <url>https://repo.codemc.io/repository/maven-public/</url>
+        </repository>
+
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
         </repository>
     </repositories>
 
@@ -35,22 +46,42 @@
         </dependency>
 
         <!-- Spigot server jar via BuildTools for NMS access -->
-    <dependency>
-        <groupId>org.spigotmc</groupId>
-        <artifactId>spigot-nms</artifactId>
-        <version>1.21.4-R0.1-SNAPSHOT</version>
-        <scope>system</scope>
-        <systemPath>${project.basedir}/lib/spigot-1.21.4-R0.1-SNAPSHOT.jar</systemPath>
-    </dependency>
+        <dependency>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-nms</artifactId>
+            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/spigot-1.21.4-R0.1-SNAPSHOT.jar</systemPath>
+        </dependency>
 
-        <!-- Netty for required classes and imports for the files -->
+        <!-- Netty -->
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.100.Final</version> <!-- Or latest stable -->
+            <version>4.1.100.Final</version>
             <scope>provided</scope>
         </dependency>
 
+        <!-- ✅ Correct ProtocolLib from CodeMC -->
+        <dependency>
+            <groupId>net.dmulloy2</groupId>
+            <artifactId>ProtocolLib</artifactId>
+            <version>5.4.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Adventure API -->
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-api</artifactId>
+            <version>4.14.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-platform-bukkit</artifactId>
+            <version>4.3.2</version>
+        </dependency>
     </dependencies>
 
     <build>

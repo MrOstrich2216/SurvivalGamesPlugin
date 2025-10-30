@@ -1,7 +1,7 @@
 package me.mrostrich.survivalgames.ui;
 
-import me.mrostrich.survivalgames.GameManager;
 import me.mrostrich.survivalgames.SurvivalGamesPlugin;
+import me.mrostrich.survivalgames.state.MatchState;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -17,24 +17,32 @@ public class ActionBarTask {
 
     public void start() {
         stop();
+        plugin.getLogger().info("ActionBarTask started.");
         task = new BukkitRunnable() {
             @Override
             public void run() {
                 if (!plugin.isPluginEnabledFlag()) return;
 
-                GameManager.State state = plugin.getGameManager().getState();
+                MatchState state = plugin.getMatchState();
 
-                String msg = switch (state) {
-                    case WAITING -> "§eWaiting for the game to start...";
-                    case GRACE -> "§aLook for resources before the fight starts!";
-                    case FIGHT -> "§6The fight begins! §fPave your way to victory.";
-                    case FINAL_FIGHT -> "§4The final fight begins! §fFight for glory!";
-                    case ENDED -> "§5The nightmare is over. §7May the last one standing win.";
-                };
+                String rawMsg;
+                switch (state) {
+                    case WAITING -> rawMsg = "§eWaiting for the game to start...";
+                    case RUNNING -> rawMsg = "§6The fight begins! §fPave your way to victory.";
+                    case FINAL_FIGHT -> rawMsg = "§4The final fight begins! §fFight for glory!";
+                    case ENDED -> rawMsg = "§5The nightmare is over. §7May the last one standing win.";
+                    default -> rawMsg = "§eWaiting for the game to start...";
+                }
+
+                Component msg = Component.text(rawMsg);
 
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (!plugin.isExempt(p.getUniqueId())) {
-                        p.sendActionBar(Component.text(msg));
+                    try {
+                        if (!plugin.isExempt(p)) {
+                            p.sendActionBar(msg);
+                        }
+                    } catch (Throwable t) {
+                        plugin.getLogger().warning("Failed to send action bar to " + p.getName() + ": " + t.getMessage());
                     }
                 }
             }
@@ -43,6 +51,9 @@ public class ActionBarTask {
     }
 
     public void stop() {
-        if (task != null) task.cancel();
+        if (task != null) {
+            try { task.cancel(); } catch (Throwable ignored) {}
+            task = null;
+        }
     }
 }

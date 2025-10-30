@@ -4,6 +4,8 @@ version: FINAL-RELEASE
 api-version: '1.21'
 author: MrOstrich2216
 description: Competitive Survival Games plugin and minigame controller
+website: https://github.com/MrOstrich2216/SurvivalGamesPlugin
+depend: [ProtocolLib]
 commands:
   game:
     description: Survival Games administration command
