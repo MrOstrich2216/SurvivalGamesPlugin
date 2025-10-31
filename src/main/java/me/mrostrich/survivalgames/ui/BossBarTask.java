@@ -75,7 +75,7 @@ public class BossBarTask {
                         bossBar.setVisible(false);
                     }
 
-                    case RUNNING -> {
+                    case FIGHT -> {
                         bossBar.setVisible(true);
                         bossBar.setColor(BarColor.RED);
 

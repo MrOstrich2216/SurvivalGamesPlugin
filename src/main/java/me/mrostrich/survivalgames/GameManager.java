@@ -92,7 +92,7 @@ public class GameManager {
         // sync legacy enum
         switch (newState) {
             case WAITING -> this.state = State.WAITING;
-            case RUNNING -> this.state = State.FIGHT; // map RUNNING -> FIGHT for legacy
+            case FIGHT -> this.state = State.FIGHT; // map FIGHT -> FIGHT for legacy
             case FINAL_FIGHT -> this.state = State.FINAL_FIGHT;
             case ENDED -> this.state = State.ENDED;
             default -> this.state = State.WAITING;
@@ -206,7 +206,7 @@ public class GameManager {
         }
 
         // canonical state set and UI update
-        setMatchState(MatchState.RUNNING);
+        setMatchState(MatchState.FIGHT);
         // keep legacy grace mapping
         this.state = State.GRACE;
         graceRemaining = graceSeconds;
@@ -227,6 +227,7 @@ public class GameManager {
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.sendTitle("§aLet the games begin!", "", 10, 40, 10);
+            p.sendActionBar(ComponentTextUtil.simpleAction("§eGrace period: " + (graceSeconds / 60) + " minutes. §cYou have only one life."));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
 
@@ -256,11 +257,11 @@ public class GameManager {
 
         plugin.getLogger().info("Grace ended. Alive count: " + aliveCount);
 
-        // canonical state becomes RUNNING, legacy maps to FIGHT for older code expecting GRACE->FIGHT
-        setMatchState(MatchState.RUNNING);
+        // canonical state becomes FIGHT, legacy maps to FIGHT for older code expecting GRACE->FIGHT
+        setMatchState(MatchState.FIGHT);
         this.state = State.FIGHT;
         startBorderShrink(shrinkRateFight);
-        plugin.getLogger().info("Grace ended. Switching to state: RUNNING -> legacy FIGHT");
+        plugin.getLogger().info("Grace ended. Switching to state: FIGHT -> legacy FIGHT");
 
         // Immediately check if final fight should begin
         checkFinalFightAcceleration();
@@ -311,7 +312,7 @@ public class GameManager {
     public void checkFinalFightAcceleration() {
         if (matchState == MatchState.FINAL_FIGHT || state == State.FINAL_FIGHT) return;
 
-        if (matchState == MatchState.RUNNING || state == State.FIGHT || state == State.GRACE) {
+        if (matchState == MatchState.FIGHT || state == State.FIGHT || state == State.GRACE) {
             long aliveCount = getAlive().stream()
                     .filter(id -> !isExempt(id))
                     .count();

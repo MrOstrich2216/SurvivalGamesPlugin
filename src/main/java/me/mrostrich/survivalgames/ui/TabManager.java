@@ -2,17 +2,14 @@ package me.mrostrich.survivalgames.ui;
 
 import me.mrostrich.survivalgames.SurvivalGamesPlugin;
 import me.mrostrich.survivalgames.state.MatchState;
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.util.Objects;
-
 /**
- * Lightweight tab header/footer manager using Adventure when available and falling back to legacy API.
- * Keeps header/footer consistent across players and updates on request.
+ * Lightweight tab header/footer manager using Adventure API with legacy fallback.
+ * Updates tab list header/footer based on current match state.
  */
 public class TabManager {
 
@@ -46,7 +43,12 @@ public class TabManager {
                     headerRaw = "§6Survival Games §7| §aWaiting";
                     footerRaw = "§7Type §e/game start §7to begin the match";
                 }
-                case RUNNING -> {
+                case GRACE -> {
+                    headerRaw = "§6Survival Games §7| §eGrace Period";
+                    int seconds = plugin.getGraceRemaining();
+                    footerRaw = "§7Grace ends in: §f" + (seconds / 60) + "m " + (seconds % 60) + "s";
+                }
+                case FIGHT -> {
                     headerRaw = "§6Survival Games §7| §cFight in progress";
                     footerRaw = "§7Players left: §f" + plugin.getGameManager().getAlive().size();
                 }
@@ -67,21 +69,13 @@ public class TabManager {
             Component header = legacy.deserialize(headerRaw);
             Component footer = legacy.deserialize(footerRaw);
 
-            // Try Adventure API if present
             try {
                 p.sendPlayerListHeaderAndFooter(header, footer);
-                return;
             } catch (NoSuchMethodError | NoClassDefFoundError | UnsupportedOperationException ignored) {
-                // Fall through to legacy approach
-            }
-
-            // Legacy fallback: use old Bukkit methods
-            try {
-                // Older servers used Strings; send legacy serialized text
-                p.setPlayerListHeader(legacy.serialize(header));
-                p.setPlayerListFooter(legacy.serialize(footer));
-            } catch (Throwable ignored) {
-                // If neither API is available, quietly ignore
+                try {
+                    p.setPlayerListHeader(legacy.serialize(header));
+                    p.setPlayerListFooter(legacy.serialize(footer));
+                } catch (Throwable ignored2) {}
             }
         } catch (Throwable t) {
             plugin.getLogger().warning("Error updating tab for player " + p.getName() + ": " + t.getMessage());

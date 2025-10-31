@@ -28,7 +28,7 @@ public class ActionBarTask {
                 String rawMsg;
                 switch (state) {
                     case WAITING -> rawMsg = "§eWaiting for the game to start...";
-                    case RUNNING -> rawMsg = "§6The fight begins! §fPave your way to victory.";
+                    case FIGHT -> rawMsg = "§6The fight begins! §fPave your way to victory.";
                     case FINAL_FIGHT -> rawMsg = "§4The final fight begins! §fFight for glory!";
                     case ENDED -> rawMsg = "§5The nightmare is over. §7May the last one standing win.";
                     default -> rawMsg = "§eWaiting for the game to start...";

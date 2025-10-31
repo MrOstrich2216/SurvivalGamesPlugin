@@ -59,7 +59,7 @@ public class PlayerDamageListener implements Listener {
             try {
                 if (plugin.getMatchState() != null) {
                     switch (plugin.getMatchState()) {
-                        case WAITING, RUNNING, FINAL_FIGHT, ENDED -> {
+                        case WAITING, FIGHT, FINAL_FIGHT, ENDED -> {
                             // Only block in the specific legacy grace condition: check GameManager's graceRemaining if available
                         }
                     }

@@ -64,7 +64,7 @@ public class ScoreboardTask {
                         MatchState matchState = plugin.getMatchState();
                         String phaseLabel;
                         switch (matchState) {
-                            case RUNNING -> {
+                            case FIGHT -> {
                                 if (gm.getState() == GameManager.State.GRACE) {
                                     phaseLabel = "§aGrace Period";
                                 } else {
@@ -92,7 +92,7 @@ public class ScoreboardTask {
                         // Alive count color based on phase
                         String aliveColor;
                         switch (matchState) {
-                            case RUNNING -> aliveColor = "§6";
+                            case FIGHT -> aliveColor = "§6";
                             case FINAL_FIGHT -> aliveColor = "§4§l";
                             case ENDED -> aliveColor = "§7";
                             case WAITING -> aliveColor = "§a";

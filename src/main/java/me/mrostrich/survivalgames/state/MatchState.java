@@ -6,7 +6,8 @@ package me.mrostrich.survivalgames.state;
  */
 public enum MatchState {
     WAITING,    // Pre-game lobby, players can prepare
-    RUNNING,    // Main fight phase (after grace)
+    GRACE,      // Obviously Grace Period dumbass
+    FIGHT,    // Main fight phase (after grace)
     FINAL_FIGHT,// Accelerated border / final confrontation
     ENDED       // Match finished
 }
